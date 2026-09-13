@@ -35,10 +35,12 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'TeamMatch AI Backend is running' });
 });
 
-const frontendPath = path.join(__dirname, '../../frontend/dist');
+const frontendPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+const indexPath = path.join(frontendPath, 'index.html');
+
 app.use(express.static(frontendPath));
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  res.sendFile(indexPath);
 });
 
 app.listen(PORT, '0.0.0.0', () => {
