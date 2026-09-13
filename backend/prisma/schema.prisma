@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("STUDENT")
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentProfile  StudentProfile?
+  createdProjects Project[]          @relation("ProjectCreator")
+  projectMembers  ProjectMember[]
+  invitations     Invitation[]       @relation("InvitationReceiver")
+  sentInvitations Invitation[]       @relation("InvitationSender")
+  joinRequests    JoinRequest[]      @relation("JoinRequestStudent")
+  reviewedRequests JoinRequest[]     @relation("RequestReviewer")
+  notifications   Notification[]
+}
+
+model StudentProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  college         String?
+  department      String?
+  year            String?
+  experience      String?  @default("Beginner")
+  availability    String?
+  bio             String?
+  githubUrl       String?
+  linkedinUrl     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  skills          StudentSkill[]
+  interests       StudentInterest[]
+  preferredRoles  StudentRole[]
+  learningGoals   LearningGoal[]
+  previousProjects PreviousProject[]
+}
+
+model Skill {
+  id    String @id @default(uuid())
+  name  String @unique
+  category String?
+
+  studentSkills  StudentSkill[]
+  projectSkills  ProjectSkill[]
+}
+
+model StudentSkill {
+  id        String  @id @default(uuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skillId   String
+  skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  level     String  @default("Intermediate")
+
+  @@unique([profileId, skillId])
+}
+
+model Interest {
+  id    String @id @default(uuid())
+  name  String @unique
+
+  studentInterests StudentInterest[]
+  projectInterests ProjectInterest[]
+}
+
+model StudentInterest {
+  id        String  @id @default(uuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  interestId String
+  interest  Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, interestId])
+}
+
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique
+
+  studentRoles  StudentRole[]
+  projectRoles  ProjectRole[]
+}
+
+model StudentRole {
+  id        String  @id @default(uuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, roleId])
+}
+
+model LearningGoal {
+  id        String  @id @default(uuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skill     String
+}
+
+model PreviousProject {
+  id        String  @id @default(uuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String
+  description String?
+  skills    String?
+  url       String?
+}
+
+model Project {
+  id              String   @id @default(uuid())
+  title           String
+  description     String
+  domain          String?
+  creatorId       String
+  creator         User     @relation("ProjectCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  teamSize        Int      @default(4)
+  experienceLevel String?
+  availability    String?
+  otherRequirements String?
+  status          String   @default("open")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  skills          ProjectSkill[]
+  roles           ProjectRole[]
+  interests       ProjectInterest[]
+  members         ProjectMember[]
+  invitations     Invitation[]
+  joinRequests    JoinRequest[]
+  matchScores     MatchScore[]
+}
+
+model ProjectSkill {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skillId   String
+  skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  required  Boolean @default(true)
+
+  @@unique([projectId, skillId])
+}
+
+model ProjectRole {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  count     Int     @default(1)
+
+  @@unique([projectId, roleId])
+}
+
+model ProjectInterest {
+  id         String  @id @default(uuid())
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  interestId String
+  interest   Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, interestId])
+}
+
+model ProjectMember {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String?
+  joinedAt  DateTime @default(now())
+
+  @@unique([projectId, userId])
+}
+
+model Invitation {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User     @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User     @relation("InvitationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      String   @default("pending")
+  message     String?
+  matchScore  Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, receiverId])
+}
+
+model JoinRequest {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User     @relation("JoinRequestStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  reviewerId  String?
+  reviewer    User?    @relation("RequestReviewer", fields: [reviewerId], references: [id])
+  status      String   @default("pending")
+  message     String?
+  matchScore  Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, studentId])
+}
+
+model MatchScore {
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId     String
+  overallMatch  Float
+  skillMatch    Float?
+  interestMatch Float?
+  roleMatch     Float?
+  experienceMatch Float?
+  availabilityMatch Float?
+  reasons       String?
+  createdAt     DateTime @default(now())
+
+  @@unique([projectId, studentId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
