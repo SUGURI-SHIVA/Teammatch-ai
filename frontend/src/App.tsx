@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -52,10 +53,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Navbar />
-          <AppRoutes />
-        </div>
+        <ThemeProvider>
+          <div className="min-h-screen bg-gray-50">
+            <Navbar />
+            <AppRoutes />
+          </div>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );
