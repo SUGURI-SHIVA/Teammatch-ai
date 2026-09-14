@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => { loadNotifications(); }, []);
 
@@ -28,6 +30,18 @@ export default function Notifications() {
       await api.notifications.readAll();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch {}
+  };
+
+  const handleClick = async (notif: any) => {
+    if (!notif.read) await markAsRead(notif.id);
+    if (notif.link) {
+      const linkMap: Record<string, string> = {
+        '/invitations': '/invitations',
+        '/join-requests': '/join-requests',
+      };
+      const target = linkMap[notif.link] || notif.link;
+      navigate(target);
+    }
   };
 
   const unread = notifications.filter((n) => !n.read);
@@ -57,20 +71,25 @@ export default function Notifications() {
       ) : (
         <div className="space-y-1.5">
           {notifications.map((notif) => (
-            <div key={notif.id} className={`card flex items-start gap-3 py-3 ${!notif.read ? 'border-l-2 border-l-blue-500 bg-blue-50/30' : ''}`}>
+            <button
+              key={notif.id}
+              onClick={() => handleClick(notif)}
+              className={`w-full card flex items-start gap-3 py-3 text-left transition-all hover:bg-gray-50 cursor-pointer ${!notif.read ? 'border-l-2 border-l-blue-500 bg-blue-50/30' : ''}`}
+            >
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!notif.read ? 'bg-blue-100' : 'bg-gray-100'}`}>
                 <Bell size={14} className={notif.read ? 'text-gray-400' : 'text-blue-600'} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm ${!notif.read ? 'font-medium text-gray-900' : 'text-gray-700'}`}>{notif.title}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{notif.message}</p>
+                {notif.link && <p className="text-[10px] text-blue-500 mt-1">Click to view →</p>}
               </div>
               {!notif.read && (
-                <button onClick={() => markAsRead(notif.id)} className="text-xs text-blue-600 hover:underline flex-shrink-0">
+                <span className="text-xs text-blue-600 flex-shrink-0">
                   <Check size={14} />
-                </button>
+                </span>
               )}
-            </div>
+            </button>
           ))}
         </div>
       )}

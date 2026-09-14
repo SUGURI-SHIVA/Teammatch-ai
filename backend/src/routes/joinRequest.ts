@@ -102,7 +102,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         type: 'JOIN_REQUEST_RECEIVED',
         title: 'New Join Request',
         message: `A student wants to join "${project.title}"`,
-        link: `/projects/${project.id}/requests`,
+        link: `/join-requests`,
       },
     });
 

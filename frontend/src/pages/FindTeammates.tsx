@@ -64,7 +64,10 @@ export default function FindTeammates() {
       const q = search.toLowerCase();
       if (!t.name?.toLowerCase().includes(q) && !t.course?.toLowerCase().includes(q) && !t.user?.name?.toLowerCase().includes(q)) return false;
     }
-    if (selectedRole && !t.preferredRoles?.some((r: any) => (r.name || r) === selectedRole)) return false;
+    if (selectedRole && !t.preferredRoles?.some((r: any) => {
+      const roleName = r.role?.name || r.name || r;
+      return roleName === selectedRole;
+    })) return false;
     return true;
   });
 
@@ -133,7 +136,7 @@ export default function FindTeammates() {
                     <p className="text-sm font-semibold text-gray-900">{getTeammateName(teammate)}</p>
                     <p className="text-xs text-gray-500">{teammate.course || ''}{teammate.course && teammate.year ? ' • ' : ''}{teammate.year || ''}</p>
                     {teammate.preferredRoles?.[0] && (
-                      <span className="badge badge-blue mt-1">{teammate.preferredRoles[0].name || teammate.preferredRoles[0]}</span>
+                      <span className="badge badge-blue mt-1">{teammate.preferredRoles[0].role?.name || teammate.preferredRoles[0].name || ''}</span>
                     )}
                   </div>
                 </div>
