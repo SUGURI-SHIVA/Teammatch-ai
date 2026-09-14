@@ -14,6 +14,7 @@ export default function ProjectDetail() {
   const [requestSent, setRequestSent] = useState(false);
   const [selectedRole, setSelectedRole] = useState('');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => { loadProject(); }, [id]);
@@ -32,11 +33,13 @@ export default function ProjectDetail() {
 
   const handleJoin = async () => {
     if (!selectedRole) return;
-    setJoining(true);
+    setJoining(true); setError('');
     try {
       await api.joinRequests.send({ projectId: id, role: selectedRole, message });
       setRequestSent(true);
-    } catch {}
+    } catch (e: any) {
+      setError(e.message || 'Failed to send request');
+    }
     setJoining(false);
   };
 
@@ -151,22 +154,36 @@ export default function ProjectDetail() {
             <div className="card">
               <h2 className="section-title mb-3">Request to Join</h2>
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Select Role</label>
-                  <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="input-field text-sm">
-                    <option value="">Choose a role</option>
-                    {(Array.isArray(project.requiredRoles) ? project.requiredRoles : project.roles || []).map((r: any) => (
-                      <option key={r.id || r} value={r.name || r}>{r.name || r}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Message (optional)</label>
-                  <textarea value={message} onChange={(e) => setMessage(e.target.value)} className="input-field min-h-[60px]" placeholder="Why do you want to join?" />
-                </div>
-                <button onClick={handleJoin} disabled={joining || !selectedRole} className="btn-primary w-full flex items-center justify-center gap-2">
-                  <Send size={14} /> {joining ? 'Sending...' : 'Send Request'}
-                </button>
+                {(() => {
+                  const roles = Array.isArray(project.requiredRoles) ? project.requiredRoles : Array.isArray(project.roles) ? project.roles : [];
+                  const hasRoles = roles.length > 0;
+                  return (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Select Role</label>
+                        {hasRoles ? (
+                          <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="input-field text-sm">
+                            <option value="">Choose a role</option>
+                            {roles.map((r: any) => {
+                              const roleName = r.role?.name || r.name || r;
+                              return <option key={r.id || r.role?.id || roleName} value={roleName}>{roleName}</option>;
+                            })}
+                          </select>
+                        ) : (
+                          <input type="text" value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="input-field text-sm" placeholder="e.g. Frontend Developer" />
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Message (optional)</label>
+                        <textarea value={message} onChange={(e) => setMessage(e.target.value)} className="input-field min-h-[60px]" placeholder="Why do you want to join?" />
+                      </div>
+                      <button onClick={handleJoin} disabled={joining || !selectedRole} className="btn-primary w-full flex items-center justify-center gap-2">
+                        <Send size={14} /> {joining ? 'Sending...' : 'Send Request'}
+                      </button>
+                      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
