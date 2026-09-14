@@ -14,7 +14,11 @@ router.get('/', async (req, res) => {
         skills: { include: { skill: true } },
         roles: { include: { role: true } },
         interests: { include: { interest: true } },
-        members: true,
+        members: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -60,7 +64,11 @@ router.get('/member', authenticate, async (req: AuthRequest, res) => {
             creator: { select: { id: true, name: true } },
             skills: { include: { skill: true } },
             roles: { include: { role: true } },
-            members: true,
+            members: {
+              include: {
+                user: { select: { id: true, name: true } },
+              },
+            },
           },
         },
       },
