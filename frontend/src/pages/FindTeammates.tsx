@@ -12,6 +12,7 @@ export default function FindTeammates() {
   const { user } = useAuth();
   const [teammates, setTeammates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
@@ -30,11 +31,16 @@ export default function FindTeammates() {
       ]);
       if (teammatesData.status === 'fulfilled') {
         setTeammates(Array.isArray(teammatesData.value) ? teammatesData.value : []);
+      } else {
+        setError('Failed to load teammates. Make sure you have completed your profile.');
       }
       if (projectsData.status === 'fulfilled') {
         setMyProjects(Array.isArray(projectsData.value) ? projectsData.value : []);
       }
-    } catch { setTeammates([]); setMyProjects([]); }
+    } catch (e: any) {
+      setError(e.message || 'Something went wrong');
+      setTeammates([]); setMyProjects([]);
+    }
     setLoading(false);
   };
 
@@ -79,6 +85,10 @@ export default function FindTeammates() {
         <h1 className="page-title">Find Teammates</h1>
         <p className="page-subtitle">Discover students whose skills and interests complement your project</p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm border border-red-200 mb-6">{error}</div>
+      )}
 
       {myProjects.length > 0 && (
         <div className="mb-6">

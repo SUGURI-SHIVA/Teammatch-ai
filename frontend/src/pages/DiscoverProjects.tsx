@@ -10,6 +10,7 @@ const availabilityOptions = ['Weekdays', 'Weekends', 'Flexible'];
 export default function DiscoverProjects() {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -22,7 +23,10 @@ export default function DiscoverProjects() {
     try {
       const data = await api.discovery.projects();
       setProjects(Array.isArray(data) ? data : []);
-    } catch { setProjects([]); }
+    } catch (e: any) {
+      setError(e.message || 'Failed to load projects');
+      setProjects([]);
+    }
     setLoading(false);
   };
 
@@ -95,6 +99,10 @@ export default function DiscoverProjects() {
             </button>
           )}
         </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm border border-red-200 mb-6">{error}</div>
       )}
 
       {loading ? (

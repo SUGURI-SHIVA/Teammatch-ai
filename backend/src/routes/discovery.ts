@@ -17,7 +17,11 @@ router.get('/projects', authenticate, async (req: AuthRequest, res) => {
           skills: { include: { skill: true } },
           roles: { include: { role: true } },
           interests: { include: { interest: true } },
-          members: true,
+        members: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+        },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -31,7 +35,11 @@ router.get('/projects', authenticate, async (req: AuthRequest, res) => {
         skills: { include: { skill: true } },
         roles: { include: { role: true } },
         interests: { include: { interest: true } },
-        members: true,
+        members: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+        },
       },
     });
 

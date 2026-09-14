@@ -42,8 +42,11 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           college, department, year, experience, availability, bio,
           skills: {
             create: await Promise.all(
-              (skills || []).map(async (s: any) => {
-                const skillName = typeof s === 'string' ? s : s.name;
+              (skills || []).filter((s: any) => {
+                const name = typeof s === 'string' ? s : s.name;
+                return name && typeof name === 'string' && name.trim();
+              }).map(async (s: any) => {
+                const skillName = (typeof s === 'string' ? s : s.name).trim();
                 const level = typeof s === 'string' ? 'Intermediate' : s.level || 'Intermediate';
                 const skill = await prisma.skill.upsert({
                   where: { name: skillName },
@@ -56,11 +59,12 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           },
           interests: {
             create: await Promise.all(
-              (interests || []).map(async (name: string) => {
+              (interests || []).filter((name: any) => name && typeof name === 'string' && name.trim()).map(async (name: string) => {
+                const trimmed = name.trim();
                 const interest = await prisma.interest.upsert({
-                  where: { name },
+                  where: { name: trimmed },
                   update: {},
-                  create: { name },
+                  create: { name: trimmed },
                 });
                 return { interestId: interest.id };
               })
@@ -68,18 +72,19 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           },
           preferredRoles: {
             create: await Promise.all(
-              (preferredRoles || []).map(async (name: string) => {
+              (preferredRoles || []).filter((name: any) => name && typeof name === 'string' && name.trim()).map(async (name: string) => {
+                const trimmed = name.trim();
                 const role = await prisma.role.upsert({
-                  where: { name },
+                  where: { name: trimmed },
                   update: {},
-                  create: { name },
+                  create: { name: trimmed },
                 });
                 return { roleId: role.id };
               })
             ),
           },
           learningGoals: {
-            create: (Array.isArray(learningGoals) ? learningGoals : (learningGoals ? [learningGoals] : [])).map((skill: string) => ({ skill })),
+            create: (Array.isArray(learningGoals) ? learningGoals : (learningGoals ? [learningGoals] : [])).filter((s: any) => s && typeof s === 'string' && s.trim()).map((skill: string) => ({ skill: skill.trim() })),
           },
           previousProjects: {
             create: (previousProjects || []).map((p: any) => ({
@@ -118,11 +123,12 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         },
         interests: {
           create: await Promise.all(
-            (interests || []).map(async (name: string) => {
+            (interests || []).filter((name: any) => name && typeof name === 'string' && name.trim()).map(async (name: string) => {
+              const trimmed = name.trim();
               const interest = await prisma.interest.upsert({
-                where: { name },
+                where: { name: trimmed },
                 update: {},
-                create: { name },
+                create: { name: trimmed },
               });
               return { interestId: interest.id };
             })
@@ -130,18 +136,19 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         },
         preferredRoles: {
           create: await Promise.all(
-            (preferredRoles || []).map(async (name: string) => {
+            (preferredRoles || []).filter((name: any) => name && typeof name === 'string' && name.trim()).map(async (name: string) => {
+              const trimmed = name.trim();
               const role = await prisma.role.upsert({
-                where: { name },
+                where: { name: trimmed },
                 update: {},
-                create: { name },
+                create: { name: trimmed },
               });
               return { roleId: role.id };
             })
           ),
         },
         learningGoals: {
-          create: (Array.isArray(learningGoals) ? learningGoals : (learningGoals ? [learningGoals] : [])).map((skill: string) => ({ skill })),
+          create: (Array.isArray(learningGoals) ? learningGoals : (learningGoals ? [learningGoals] : [])).filter((s: any) => s && typeof s === 'string' && s.trim()).map((skill: string) => ({ skill: skill.trim() })),
         },
         previousProjects: {
           create: (previousProjects || []).map((p: any) => ({

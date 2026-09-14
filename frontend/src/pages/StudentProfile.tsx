@@ -33,7 +33,7 @@ export default function StudentProfile() {
       setForm({
         name: data.name || '', email: data.email || '', course: data.course || '', year: data.year || '',
         bio: data.bio || '', experienceLevel: data.experienceLevel || 'Intermediate',
-        preferredRoles: data.preferredRoles?.map((r: any) => r.name) || [],
+        preferredRoles: data.preferredRoles?.map((r: any) => r.role?.name || r.name).filter(Boolean) || [],
         availability: data.availability || 'Flexible', learningGoals: Array.isArray(data.learningGoals) ? data.learningGoals.map((g: any) => g.skill || g).join(', ') : (data.learningGoals || ''),
       });
       setSkills(data.skills?.map((s: any) => s.name) || []);
