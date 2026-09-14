@@ -1,186 +1,165 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
-import { MatchScore, SkillBadge, InterestBadge, RoleBadge, MatchReasons, ProgressBar } from '../components/UI';
-import { Search, Users, Mail, ArrowLeft, Shield } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { UserPlus, ArrowLeft, Search, Filter, X, Send } from 'lucide-react';
+
+const roles = ['Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'ML Developer', 'Data Analyst', 'UI/UX Designer', 'Project Manager', 'Mobile Developer', 'DevOps Engineer', 'QA Tester'];
 
 export default function FindTeammates() {
   const { projectId } = useParams();
-  const [students, setStudents] = useState<any[]>([]);
-  const [project, setProject] = useState<any>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [teammates, setTeammates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterSkill, setFilterSkill] = useState('');
-  const [filterRole, setFilterRole] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedProject, setSelectedProject] = useState('');
+  const [myProjects, setMyProjects] = useState<any[]>([]);
   const [inviting, setInviting] = useState<string | null>(null);
+  const [sentInvites, setSentInvites] = useState<Set<string>>(new Set());
 
-  useEffect(() => { loadData(); }, [projectId]);
+  useEffect(() => {
+    loadData();
+  }, [projectId]);
 
   const loadData = async () => {
     try {
-      if (projectId) {
-        const [p, s] = await Promise.all([
-          api.projects.get(projectId),
-          api.recommendations.students(projectId),
-        ]);
-        setProject(p);
-        setStudents(s);
-      } else {
-        const myProjects = await api.projects.my();
-        if (myProjects.length > 0) {
-          const p = myProjects[0];
-          setProject(p);
-          const s = await api.recommendations.students(p.id);
-          setStudents(s);
-        }
-      }
+      if (projectId) setSelectedProject(projectId);
+      const [teammatesData, projectsData] = await Promise.allSettled([
+        api.discovery.teammates(projectId),
+        api.projects.my(),
+      ]);
+      if (teammatesData.status === 'fulfilled') setTeammates(teammatesData.value);
+      if (projectsData.status === 'fulfilled') setMyProjects(projectsData.value);
     } catch {}
     setLoading(false);
   };
 
-  const handleInvite = async (studentId: string) => {
-    if (!project) return;
-    setInviting(studentId);
+  const handleInvite = async (userId: string) => {
+    if (!selectedProject || !user) return;
+    setInviting(userId);
     try {
-      await api.invitations.send({ projectId: project.id, receiverId: studentId });
-      setStudents(students.map((s) => s.userId === studentId ? { ...s, invited: true } : s));
-    } catch (err: any) {
-      alert(err.message);
+      const project = myProjects.find((p) => p.id === selectedProject);
+      if (!project) return;
+      const role = project.requiredRoles?.[0]?.name || 'Team Member';
+      await api.invitations.send({ projectId: selectedProject, receiverId: userId, role, message: `Join ${project.title}` });
+      setSentInvites(new Set([...sentInvites, userId]));
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
     }
     setInviting(null);
   };
 
-  const allSkills = [...new Set(students.flatMap((s) => s.skills?.map((sk: any) => sk.skill.name) || []))];
-  const allRoles = [...new Set(students.flatMap((s) => s.preferredRoles?.map((r: any) => r.role.name) || []))];
-
-  const filtered = students.filter((s) => {
+  const filtered = teammates.filter((t: any) => {
     if (search) {
-      const name = s.user?.name?.toLowerCase() || '';
-      const skills = s.skills?.map((sk: any) => sk.skill.name.toLowerCase()).join(' ') || '';
-      if (!name.includes(search.toLowerCase()) && !skills.includes(search.toLowerCase())) return false;
+      const q = search.toLowerCase();
+      if (!t.name?.toLowerCase().includes(q) && !t.course?.toLowerCase().includes(q)) return false;
     }
-    if (filterSkill && !s.skills?.some((sk: any) => sk.skill.name === filterSkill)) return false;
-    if (filterRole && !s.preferredRoles?.some((r: any) => r.role.name === filterRole)) return false;
+    if (selectedRole && !t.preferredRoles?.some((r: any) => r.name === selectedRole)) return false;
     return true;
   });
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500">Finding teammates...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-8">
-          <Link to="/dashboard" className="text-sm text-primary-600 hover:underline flex items-center space-x-1 mb-2">
-            <ArrowLeft size={14} /><span>Back to Dashboard</span>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Find Teammates</h1>
-          {project && <p className="text-gray-600 mt-1">For project: {project.title}</p>}
-        </div>
-
-        {project && (
-          <div className="card mb-6 bg-primary-50 border-primary-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-primary-900">Team Skill Coverage</h3>
-                <p className="text-sm text-primary-700">{project.members?.length || 0}/{project.teamSize} members</p>
-              </div>
-              <Link to={`/projects/${project.id}/team`} className="text-sm text-primary-600 hover:underline">View Team</Link>
-            </div>
-          </div>
+    <div className="p-8 max-w-6xl">
+      <div className="mb-6">
+        {projectId && (
+          <button onClick={() => navigate(-1)} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-3">
+            <ArrowLeft size={14} /> Back to Project
+          </button>
         )}
-
-        <div className="card mb-6">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-10" placeholder="Search students by name or skill..." />
-              </div>
-            </div>
-            <select value={filterSkill} onChange={(e) => setFilterSkill(e.target.value)} className="input-field w-auto">
-              <option value="">All Skills</option>
-              {allSkills.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="input-field w-auto">
-              <option value="">All Roles</option>
-              {allRoles.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">No students found matching your criteria</div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((student) => (
-              <div key={student.userId} className="card-hover flex flex-col">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-bold text-lg">
-                      {student.user?.name?.charAt(0) || '?'}
-                    </div>
-                    <div>
-                      <p className="font-bold">{student.user?.name}</p>
-                      <p className="text-xs text-gray-500">{student.college || 'Student'}</p>
-                    </div>
-                  </div>
-                  {student.matchScore != null && <MatchScore score={student.matchScore} />}
-                </div>
-
-                {student.matchScore != null && (
-                  <div className="mb-3">
-                    <ProgressBar value={student.skillMatch || 0} label="Skill Match" color="bg-blue-500" />
-                    <ProgressBar value={student.interestMatch || 0} label="Interest Match" color="bg-purple-500" />
-                    <ProgressBar value={student.roleMatch || 0} label="Role Match" color="bg-green-500" />
-                  </div>
-                )}
-
-                <div className="mb-3">
-                  <p className="text-xs font-medium text-gray-500 mb-1">Skills</p>
-                  <div className="flex flex-wrap gap-1">
-                    {student.skills?.slice(0, 6).map((s: any) => (
-                      <SkillBadge key={s.id} name={s.skill.name} level={s.level} />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <p className="text-xs font-medium text-gray-500 mb-1">Interests</p>
-                  <div className="flex flex-wrap gap-1">
-                    {student.interests?.slice(0, 4).map((i: any) => (
-                      <InterestBadge key={i.id} name={i.interest.name} />
-                    ))}
-                  </div>
-                </div>
-
-                {student.preferredRoles?.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium text-gray-500 mb-1">Preferred Roles</p>
-                    <div className="flex flex-wrap gap-1">
-                      {student.preferredRoles.map((r: any) => (
-                        <RoleBadge key={r.id} name={r.role.name} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {student.matchScore != null && <MatchReasons reasons={student.reasons} />}
-
-                <div className="mt-auto pt-4">
-                  <button
-                    onClick={() => handleInvite(student.userId)}
-                    disabled={inviting === student.userId || student.invited}
-                    className="btn-primary w-full text-sm py-2 flex items-center justify-center space-x-1"
-                  >
-                    <Mail size={16} />
-                    <span>{student.invited ? 'Invited' : inviting === student.userId ? 'Sending...' : 'Invite'}</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <h1 className="page-title">Find Teammates</h1>
+        <p className="page-subtitle">Discover students whose skills and interests complement your project</p>
       </div>
+
+      {myProjects.length > 0 && (
+        <div className="mb-6">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Select project to invite for</label>
+          <select value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} className="input-field text-sm max-w-md">
+            <option value="">Choose a project</option>
+            {myProjects.map((p) => (
+              <option key={p.id} value={p.id}>{p.title}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="flex gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" placeholder="Search by name or course..." value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-9" />
+        </div>
+        <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="input-field text-sm max-w-[200px]">
+          <option value="">All Roles</option>
+          {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-gray-500 text-sm mb-2">No teammates found</p>
+          <p className="text-xs text-gray-400">Try adjusting your search or filters</p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-3">
+          {filtered.map((teammate: any) => (
+            <div key={teammate.id} className="card-hover">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-medium text-gray-600">
+                      {teammate.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{teammate.name}</p>
+                    <p className="text-xs text-gray-500">{teammate.course} • {teammate.year}</p>
+                    {teammate.preferredRoles?.[0] && (
+                      <span className="badge badge-blue mt-1">{teammate.preferredRoles[0].name}</span>
+                    )}
+                  </div>
+                </div>
+                {teammate.matchScore != null && (
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-blue-600">{teammate.matchScore}%</div>
+                    <div className="text-[10px] text-gray-500">Match</div>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {(teammate.skills || []).slice(0, 4).map((s: any) => (
+                  <span key={s.id || s} className="badge badge-gray">{s.name || s}</span>
+                ))}
+              </div>
+              {teammate.matchReasons && teammate.matchReasons.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Why recommended</p>
+                  <div className="flex flex-wrap gap-1">
+                    {teammate.matchReasons.slice(0, 2).map((reason: string, i: number) => (
+                      <span key={i} className="text-[11px] text-green-700 bg-green-50 px-2 py-0.5 rounded">✓ {reason}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedProject && (
+                <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+                  {sentInvites.has(teammate.id) ? (
+                    <span className="text-xs text-green-600 font-medium py-2">Invitation sent</span>
+                  ) : (
+                    <button onClick={() => handleInvite(teammate.id)} disabled={inviting === teammate.id} className="btn-primary text-xs py-2 flex items-center gap-1">
+                      <Send size={12} />
+                      {inviting === teammate.id ? 'Sending...' : 'Invite'}
+                    </button>
+                  )}
+                  <Link to={`/find-teammates?profile=${teammate.id}`} className="btn-ghost text-xs py-2">View Profile</Link>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

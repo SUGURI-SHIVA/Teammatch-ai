@@ -1,366 +1,182 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import { SkillBadge, InterestBadge, RoleBadge } from '../components/UI';
-import { User, BookOpen, Briefcase, Target, Plus, Trash2 } from 'lucide-react';
+import { Save, Plus, X } from 'lucide-react';
 
-const SKILL_OPTIONS = [
-  'Python', 'Java', 'C', 'C++', 'JavaScript', 'TypeScript', 'React', 'Vue.js', 'Angular',
-  'Node.js', 'Django', 'Flask', 'HTML', 'CSS', 'UI/UX', 'Flutter', 'Swift', 'Kotlin',
-  'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'Data Science',
-  'TensorFlow', 'PyTorch', 'PostgreSQL', 'MongoDB', 'Docker', 'AWS', 'Firebase',
-  'Git', 'Linux', 'REST API', 'GraphQL', 'Figma', 'IoT', 'Blockchain', 'Cybersecurity',
-  'Go', 'Rust', 'Redis', 'Kafka', 'Supabase',
-];
-
-const INTEREST_OPTIONS = [
-  'AI/ML', 'Web Development', 'Mobile Development', 'IoT', 'Cybersecurity',
-  'Healthcare', 'Education', 'FinTech', 'Agriculture', 'Gaming', 'E-commerce',
-  'Social Impact', 'Sustainability', 'Robotics', 'AR/VR', 'Cloud Computing',
-  'DevOps', 'Open Source', 'Research', 'Startups',
-];
-
-const ROLE_OPTIONS = [
-  'AI/ML Developer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
-  'UI/UX Designer', 'Researcher', 'Project Manager', 'Presenter', 'DevOps Engineer',
-  'Mobile Developer', 'Data Analyst', 'Security Analyst',
-];
+const allSkills = ['JavaScript', 'TypeScript', 'Python', 'React', 'ReactJS', 'Vue.js', 'Angular', 'Node.js', 'Express.js', 'Django', 'Flask', 'Spring Boot', 'Java', 'C++', 'Go', 'Rust', 'Swift', 'Kotlin', 'SQL', 'MongoDB', 'PostgreSQL', 'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'TensorFlow', 'PyTorch', 'Pandas', 'NumPy', 'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'HTML/CSS', 'Tailwind', 'GraphQL', 'REST API', 'Git', 'CI/CD', 'Firebase', 'Figma', 'Adobe XD', 'Unity', 'Unreal Engine', 'Flutter', 'React Native'];
+const allInterests = ['Web Development', 'Mobile Development', 'AI/ML', 'Data Science', 'Game Development', 'Cybersecurity', 'DevOps', 'Cloud Computing', 'IoT', 'Blockchain', 'AR/VR', 'UI/UX Design', 'Open Source', 'Research', 'Healthcare Tech', 'FinTech', 'EdTech', 'Sustainability'];
+const allRoles = ['Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'ML Developer', 'Data Analyst', 'UI/UX Designer', 'Project Manager', 'Mobile Developer', 'DevOps Engineer', 'QA Tester'];
+const experienceLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
 export default function StudentProfile() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [form, setForm] = useState({
+    name: '', email: '', course: '', year: '', bio: '',
+    experienceLevel: 'Intermediate',
+    preferredRoles: [] as string[],
+    availability: 'Flexible',
+    learningGoals: '',
+  });
+  const [skills, setSkills] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState('');
+  const [newInterest, setNewInterest] = useState('');
 
-  const [college, setCollege] = useState('');
-  const [department, setDepartment] = useState('');
-  const [year, setYear] = useState('');
-  const [experience, setExperience] = useState('Beginner');
-  const [availability, setAvailability] = useState('');
-  const [bio, setBio] = useState('');
-
-  const [selectedSkills, setSelectedSkills] = useState<{ name: string; level: string }[]>([]);
-  const [customSkill, setCustomSkill] = useState('');
-  const [skillLevel, setSkillLevel] = useState('Intermediate');
-
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [customInterest, setCustomInterest] = useState('');
-
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [learningGoals, setLearningGoals] = useState<string[]>([]);
-  const [newGoal, setNewGoal] = useState('');
-
-  const [previousProjects, setPreviousProjects] = useState<{ name: string; description: string; skills: string }[]>([]);
-  const [newProject, setNewProject] = useState({ name: '', description: '', skills: '' });
-
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  useEffect(() => { loadProfile(); }, []);
 
   const loadProfile = async () => {
-    setLoading(true);
     try {
-      const profile = await api.profile.get();
-      if (profile) {
-        setCollege(profile.college || '');
-        setDepartment(profile.department || '');
-        setYear(profile.year || '');
-        setExperience(profile.experience || 'Beginner');
-        setAvailability(profile.availability || '');
-        setBio(profile.bio || '');
-        setSelectedSkills(profile.skills?.map((s: any) => ({ name: s.skill.name, level: s.level })) || []);
-        setSelectedInterests(profile.interests?.map((i: any) => i.interest.name) || []);
-        setSelectedRoles(profile.preferredRoles?.map((r: any) => r.role.name) || []);
-        setLearningGoals(profile.learningGoals?.map((g: any) => g.skill) || []);
-        setPreviousProjects(profile.previousProjects?.map((p: any) => ({ name: p.name, description: p.description || '', skills: p.skills || '' })) || []);
-      }
+      const data = await api.profile.get();
+      setProfile(data);
+      setForm({
+        name: data.name || '', email: data.email || '', course: data.course || '', year: data.year || '',
+        bio: data.bio || '', experienceLevel: data.experienceLevel || 'Intermediate',
+        preferredRoles: data.preferredRoles?.map((r: any) => r.name) || [],
+        availability: data.availability || 'Flexible', learningGoals: data.learningGoals || '',
+      });
+      setSkills(data.skills?.map((s: any) => s.name) || []);
+      setInterests(data.interests?.map((i: any) => i.name) || []);
     } catch {}
     setLoading(false);
   };
 
-  const toggleSkill = (name: string) => {
-    if (selectedSkills.find((s) => s.name === name)) {
-      setSelectedSkills(selectedSkills.filter((s) => s.name !== name));
-    } else {
-      setSelectedSkills([...selectedSkills, { name, level: skillLevel }]);
-    }
-  };
-
-  const addCustomSkill = () => {
-    if (customSkill && !selectedSkills.find((s) => s.name === customSkill)) {
-      setSelectedSkills([...selectedSkills, { name: customSkill, level: skillLevel }]);
-      setCustomSkill('');
-    }
-  };
-
-  const toggleInterest = (name: string) => {
-    setSelectedInterests(
-      selectedInterests.includes(name) ? selectedInterests.filter((i) => i !== name) : [...selectedInterests, name]
-    );
-  };
-
-  const addCustomInterest = () => {
-    if (customInterest && !selectedInterests.includes(customInterest)) {
-      setSelectedInterests([...selectedInterests, customInterest]);
-      setCustomInterest('');
-    }
-  };
-
-  const toggleRole = (name: string) => {
-    setSelectedRoles(
-      selectedRoles.includes(name) ? selectedRoles.filter((r) => r !== name) : [...selectedRoles, name]
-    );
-  };
-
-  const addGoal = () => {
-    if (newGoal && !learningGoals.includes(newGoal)) {
-      setLearningGoals([...learningGoals, newGoal]);
-      setNewGoal('');
-    }
-  };
-
-  const addPreviousProject = () => {
-    if (newProject.name) {
-      setPreviousProjects([...previousProjects, newProject]);
-      setNewProject({ name: '', description: '', skills: '' });
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setMessage('');
+  const handleSave = async () => {
+    setSaving(true); setMessage('');
     try {
-      await api.profile.save({
-        college, department, year, experience, availability, bio,
-        skills: selectedSkills,
-        interests: selectedInterests,
-        preferredRoles: selectedRoles,
-        learningGoals,
-        previousProjects,
-      });
-      setMessage('Profile saved successfully!');
-    } catch (err: any) {
-      setMessage('Error: ' + err.message);
-    }
+      await api.profile.save({ ...form, skills, interests });
+      setMessage('Profile updated successfully');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (e: any) { setMessage(e.message || 'Failed to save'); }
     setSaving(false);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading profile...</div>
-      </div>
-    );
-  }
+  const addSkill = (skill: string) => {
+    if (skill && !skills.includes(skill)) { setSkills([...skills, skill]); setNewSkill(''); }
+  };
+  const removeSkill = (skill: string) => setSkills(skills.filter((s) => s !== skill));
+  const addInterest = (interest: string) => {
+    if (interest && !interests.includes(interest)) { setInterests([...interests, interest]); setNewInterest(''); }
+  };
+  const removeInterest = (interest: string) => setInterests(interests.filter((i) => i !== interest));
+  const toggleRole = (role: string) => {
+    setForm({ ...form, preferredRoles: form.preferredRoles.includes(role) ? form.preferredRoles.filter((r) => r !== role) : [...form.preferredRoles, role] });
+  };
+
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500">Loading profile...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Student Profile</h1>
-          <p className="text-gray-600 mt-1">Tell us about your skills, interests, and experience</p>
+    <div className="p-8 max-w-3xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="page-title">Profile</h1>
+          <p className="page-subtitle">Manage your skills, interests, and preferences</p>
         </div>
+        <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+          <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
 
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="card">
-            <div className="flex items-center space-x-2 mb-4">
-              <User size={20} className="text-primary-600" />
-              <h2 className="text-lg font-bold">Basic Information</h2>
+      {message && (
+        <div className={`mb-4 px-3 py-2 rounded-lg text-sm border ${message.includes('success') ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+          {message}
+        </div>
+      )}
+
+      <div className="space-y-6">
+        <section className="card">
+          <h2 className="section-title mb-3">Personal Information</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" />
             </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">College / University</label>
-                <input value={college} onChange={(e) => setCollege(e.target.value)} className="input-field" placeholder="e.g., MIT" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                <input value={department} onChange={(e) => setDepartment(e.target.value)} className="input-field" placeholder="e.g., Computer Science" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                <select value={year} onChange={(e) => setYear(e.target.value)} className="input-field">
-                  <option value="">Select year</option>
-                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option><option>5th</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Experience Level</label>
-                <select value={experience} onChange={(e) => setExperience(e.target.value)} className="input-field">
-                  <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <input type="email" value={form.email} disabled className="input-field bg-gray-50 text-gray-500" />
             </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Availability</label>
-              <input value={availability} onChange={(e) => setAvailability(e.target.value)} className="input-field" placeholder="e.g., Monday, Wednesday, Friday" />
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Course / Major</label>
+              <input type="text" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" placeholder="e.g. Computer Science" />
             </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} className="input-field" rows={3} placeholder="Tell us about yourself..." />
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Year</label>
+              <input type="text" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} className="input-field" placeholder="e.g. 3rd Year" />
             </div>
           </div>
-
-          <div className="card">
-            <div className="flex items-center space-x-2 mb-4">
-              <BookOpen size={20} className="text-primary-600" />
-              <h2 className="text-lg font-bold">Skills</h2>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Skill Level for New Skills</label>
-              <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} className="input-field w-auto">
-                <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
-              </select>
-            </div>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {SKILL_OPTIONS.map((skill) => (
-                <button
-                  key={skill}
-                  type="button"
-                  onClick={() => toggleSkill(skill)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                    selectedSkills.find((s) => s.name === skill)
-                      ? 'bg-primary-500 text-white border-primary-500'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary-300'
-                  }`}
-                >
-                  {skill}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center space-x-2">
-              <input
-                value={customSkill}
-                onChange={(e) => setCustomSkill(e.target.value)}
-                className="input-field flex-1"
-                placeholder="Add custom skill..."
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomSkill())}
-              />
-              <button type="button" onClick={addCustomSkill} className="btn-secondary text-sm py-2">Add</button>
-            </div>
-            {selectedSkills.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {selectedSkills.map((s) => (
-                  <span key={s.name} className="badge badge-blue flex items-center space-x-1">
-                    <span>{s.name} ({s.level})</span>
-                    <button type="button" onClick={() => setSelectedSkills(selectedSkills.filter((sk) => sk.name !== s.name))} className="text-blue-600 hover:text-blue-800">×</button>
-                  </span>
-                ))}
-              </div>
-            )}
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-gray-600 mb-1">About</label>
+            <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className="input-field min-h-[80px]" placeholder="A brief description about yourself..." />
           </div>
+        </section>
 
-          <div className="card">
-            <div className="flex items-center space-x-2 mb-4">
-              <Target size={20} className="text-primary-600" />
-              <h2 className="text-lg font-bold">Interests</h2>
-            </div>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {INTEREST_OPTIONS.map((interest) => (
-                <button
-                  key={interest}
-                  type="button"
-                  onClick={() => toggleInterest(interest)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                    selectedInterests.includes(interest)
-                      ? 'bg-purple-500 text-white border-purple-500'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-purple-300'
-                  }`}
-                >
-                  {interest}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center space-x-2">
-              <input
-                value={customInterest}
-                onChange={(e) => setCustomInterest(e.target.value)}
-                className="input-field flex-1"
-                placeholder="Add custom interest..."
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomInterest())}
-              />
-              <button type="button" onClick={addCustomInterest} className="btn-secondary text-sm py-2">Add</button>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center space-x-2 mb-4">
-              <Briefcase size={20} className="text-primary-600" />
-              <h2 className="text-lg font-bold">Preferred Roles</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {ROLE_OPTIONS.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => toggleRole(role)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                    selectedRoles.includes(role)
-                      ? 'bg-green-500 text-white border-green-500'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-green-300'
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <h2 className="text-lg font-bold mb-4">Learning Goals</h2>
-            <div className="flex items-center space-x-2 mb-4">
-              <input
-                value={newGoal}
-                onChange={(e) => setNewGoal(e.target.value)}
-                className="input-field flex-1"
-                placeholder="Skill you want to learn..."
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGoal())}
-              />
-              <button type="button" onClick={addGoal} className="btn-secondary text-sm py-2">Add</button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {learningGoals.map((goal) => (
-                <span key={goal} className="badge badge-orange flex items-center space-x-1">
-                  <span>{goal}</span>
-                  <button type="button" onClick={() => setLearningGoals(learningGoals.filter((g) => g !== goal))} className="text-orange-600 hover:text-orange-800">×</button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <h2 className="text-lg font-bold mb-4">Previous Projects</h2>
-            <div className="grid md:grid-cols-3 gap-2 mb-4">
-              <input value={newProject.name} onChange={(e) => setNewProject({ ...newProject, name: e.target.value })} className="input-field" placeholder="Project name" />
-              <input value={newProject.description} onChange={(e) => setNewProject({ ...newProject, description: e.target.value })} className="input-field" placeholder="Description" />
-              <div className="flex space-x-2">
-                <input value={newProject.skills} onChange={(e) => setNewProject({ ...newProject, skills: e.target.value })} className="input-field flex-1" placeholder="Skills used" />
-                <button type="button" onClick={addPreviousProject} className="btn-secondary text-sm py-2"><Plus size={16} /></button>
-              </div>
-            </div>
-            {previousProjects.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg mb-2">
-                <div>
-                  <span className="font-medium">{p.name}</span>
-                  {p.description && <span className="text-gray-500 ml-2">— {p.description}</span>}
-                </div>
-                <button type="button" onClick={() => setPreviousProjects(previousProjects.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
-              </div>
+        <section className="card">
+          <h2 className="section-title mb-3">Skills</h2>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {skills.map((skill) => (
+              <span key={skill} className="badge badge-blue flex items-center gap-1">
+                {skill} <button onClick={() => removeSkill(skill)} className="hover:text-blue-900"><X size={12} /></button>
+              </span>
             ))}
           </div>
+          <div className="flex gap-2">
+            <input type="text" value={newSkill} onChange={(e) => setNewSkill(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill(newSkill))} className="input-field flex-1" placeholder="Type a skill and press Enter" list="skills-list" />
+            <datalist id="skills-list">{allSkills.filter((s) => !skills.includes(s)).map((s) => <option key={s} value={s} />)}</datalist>
+            <button onClick={() => addSkill(newSkill)} className="btn-secondary px-3"><Plus size={16} /></button>
+          </div>
+        </section>
 
-          {message && (
-            <div className={`p-3 rounded-lg text-sm ${message.startsWith('Error') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-              {message}
+        <section className="card">
+          <h2 className="section-title mb-3">Interests</h2>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {interests.map((interest) => (
+              <span key={interest} className="badge badge-green flex items-center gap-1">
+                {interest} <button onClick={() => removeInterest(interest)} className="hover:text-green-900"><X size={12} /></button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="text" value={newInterest} onChange={(e) => setNewInterest(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest(newInterest))} className="input-field flex-1" placeholder="Type an interest and press Enter" list="interests-list" />
+            <datalist id="interests-list">{allInterests.filter((i) => !interests.includes(i)).map((i) => <option key={i} value={i} />)}</datalist>
+            <button onClick={() => addInterest(newInterest)} className="btn-secondary px-3"><Plus size={16} /></button>
+          </div>
+        </section>
+
+        <section className="card">
+          <h2 className="section-title mb-3">Preferred Roles</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {allRoles.map((role) => (
+              <button key={role} onClick={() => toggleRole(role)} className={`p-2.5 rounded-lg border text-left text-sm transition-all ${form.preferredRoles.includes(role) ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                {role}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="card">
+          <h2 className="section-title mb-3">Preferences</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Experience Level</label>
+              <select value={form.experienceLevel} onChange={(e) => setForm({ ...form, experienceLevel: e.target.value })} className="input-field">
+                {experienceLevels.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
             </div>
-          )}
-
-          <button type="submit" className="btn-primary w-full text-lg py-4" disabled={saving}>
-            {saving ? 'Saving Profile...' : 'Save Profile'}
-          </button>
-        </form>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Availability</label>
+              <select value={form.availability} onChange={(e) => setForm({ ...form, availability: e.target.value })} className="input-field">
+                <option value="Weekdays">Weekdays</option>
+                <option value="Weekends">Weekends</option>
+                <option value="Flexible">Flexible</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Learning Goals</label>
+            <textarea value={form.learningGoals} onChange={(e) => setForm({ ...form, learningGoals: e.target.value })} className="input-field min-h-[60px]" placeholder="What do you want to learn or improve?" />
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -66,4 +66,8 @@ export const api = {
     readAll: () => request('/notifications/read-all', { method: 'PUT' }),
     read: (id: string) => request(`/notifications/${id}/read`, { method: 'PUT' }),
   },
+  discovery: {
+    projects: () => request('/recommendations/projects'),
+    teammates: (projectId?: string) => projectId ? request(`/recommendations/students/${projectId}`) : request('/profile/all'),
+  },
 };

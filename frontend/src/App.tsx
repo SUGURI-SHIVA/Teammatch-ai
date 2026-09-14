@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,16 +18,27 @@ import Notifications from './pages/Notifications';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500 text-sm">Loading...</div></div>;
   if (!user) return <Navigate to="/login" />;
   return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500 text-sm">Loading...</div></div>;
   if (user) return <Navigate to="/dashboard" />;
   return <>{children}</>;
+}
+
+function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="ml-56">
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function AppRoutes() {
@@ -35,16 +47,16 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/student-profile" element={<ProtectedRoute><StudentProfile /></ProtectedRoute>} />
-      <Route path="/create-project" element={<ProtectedRoute><CreateProject /></ProtectedRoute>} />
-      <Route path="/discover-projects" element={<ProtectedRoute><DiscoverProjects /></ProtectedRoute>} />
-      <Route path="/find-teammates" element={<ProtectedRoute><FindTeammates /></ProtectedRoute>} />
-      <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
-      <Route path="/projects/:projectId/find-teammates" element={<ProtectedRoute><FindTeammates /></ProtectedRoute>} />
-      <Route path="/invitations" element={<ProtectedRoute><Invitations /></ProtectedRoute>} />
-      <Route path="/join-requests" element={<ProtectedRoute><JoinRequests /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+      <Route path="/student-profile" element={<ProtectedRoute><AppLayout><StudentProfile /></AppLayout></ProtectedRoute>} />
+      <Route path="/create-project" element={<ProtectedRoute><AppLayout><CreateProject /></AppLayout></ProtectedRoute>} />
+      <Route path="/discover-projects" element={<ProtectedRoute><AppLayout><DiscoverProjects /></AppLayout></ProtectedRoute>} />
+      <Route path="/find-teammates" element={<ProtectedRoute><AppLayout><FindTeammates /></AppLayout></ProtectedRoute>} />
+      <Route path="/projects/:id" element={<ProtectedRoute><AppLayout><ProjectDetail /></AppLayout></ProtectedRoute>} />
+      <Route path="/projects/:projectId/find-teammates" element={<ProtectedRoute><AppLayout><FindTeammates /></AppLayout></ProtectedRoute>} />
+      <Route path="/invitations" element={<ProtectedRoute><AppLayout><Invitations /></AppLayout></ProtectedRoute>} />
+      <Route path="/join-requests" element={<ProtectedRoute><AppLayout><JoinRequests /></AppLayout></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
     </Routes>
   );
 }
@@ -54,10 +66,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <AppRoutes />
-          </div>
+          <AppRoutes />
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>

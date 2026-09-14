@@ -1,16 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
-import { Bell, CheckCircle, XCircle, Mail, Users } from 'lucide-react';
-
-const iconMap: Record<string, any> = {
-  INVITATION_RECEIVED: Mail,
-  INVITATION_ACCEPTED: CheckCircle,
-  INVITATION_DECLINED: XCircle,
-  JOIN_REQUEST_RECEIVED: Users,
-  JOIN_REQUEST_ACCEPTED: CheckCircle,
-  JOIN_REQUEST_REJECTED: XCircle,
-};
+import { Bell, Check, CheckCheck } from 'lucide-react';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -22,53 +12,68 @@ export default function Notifications() {
     try {
       const data = await api.notifications.list();
       setNotifications(data);
-      await api.notifications.readAll();
     } catch {}
     setLoading(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
+  const markAsRead = async (id: string) => {
+    try {
+      await api.notifications.read(id);
+      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    } catch {}
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await api.notifications.readAll();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch {}
+  };
+
+  const unread = notifications.filter((n) => !n.read);
+
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500">Loading notifications...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4">
-        <Link to="/dashboard" className="text-sm text-primary-600 hover:underline flex items-center space-x-1 mb-6">
-          ← Back to Dashboard
-        </Link>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Notifications</h1>
-        <p className="text-gray-600 mb-8">Stay updated on your team activities</p>
-
-        {notifications.length === 0 ? (
-          <div className="text-center py-12">
-            <Bell size={48} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No notifications yet</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {notifications.map((notif) => {
-              const Icon = iconMap[notif.type] || Bell;
-              return (
-                <div key={notif.id} className={`card flex items-start space-x-4 ${!notif.read ? 'border-l-4 border-l-primary-500' : ''}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    notif.read ? 'bg-gray-100 text-gray-500' : 'bg-primary-100 text-primary-600'
-                  }`}>
-                    <Icon size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${!notif.read ? 'text-gray-900' : 'text-gray-600'}`}>{notif.title}</p>
-                    <p className="text-sm text-gray-500">{notif.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">{new Date(notif.createdAt).toLocaleString()}</p>
-                  </div>
-                  {notif.link && (
-                    <Link to={notif.link} className="text-sm text-primary-600 hover:underline">View</Link>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+    <div className="p-8 max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="page-title">Notifications</h1>
+          <p className="page-subtitle">{unread.length > 0 ? `${unread.length} unread notifications` : 'All caught up'}</p>
+        </div>
+        {unread.length > 0 && (
+          <button onClick={markAllAsRead} className="btn-ghost text-xs flex items-center gap-1">
+            <CheckCheck size={14} /> Mark all read
+          </button>
         )}
       </div>
+
+      {notifications.length === 0 ? (
+        <div className="text-center py-16">
+          <Bell size={40} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">No notifications yet</p>
+          <p className="text-xs text-gray-400 mt-1">You'll see updates about invitations, requests, and team activity here</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {notifications.map((notif) => (
+            <div key={notif.id} className={`card flex items-start gap-3 py-3 ${!notif.read ? 'border-l-2 border-l-blue-500 bg-blue-50/30' : ''}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!notif.read ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                <Bell size={14} className={notif.read ? 'text-gray-400' : 'text-blue-600'} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm ${!notif.read ? 'font-medium text-gray-900' : 'text-gray-700'}`}>{notif.title}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{notif.message}</p>
+              </div>
+              {!notif.read && (
+                <button onClick={() => markAsRead(notif.id)} className="text-xs text-blue-600 hover:underline flex-shrink-0">
+                  <Check size={14} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

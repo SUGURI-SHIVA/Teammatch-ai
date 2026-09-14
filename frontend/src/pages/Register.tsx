@@ -6,7 +6,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('STUDENT');
+  const [role, setRole] = useState<'STUDENT' | 'PROJECT_CREATOR' | 'BOTH'>('BOTH');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -27,74 +27,56 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center space-x-2 mb-4">
-            <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">TM</span>
-            </div>
-            <span className="text-2xl font-bold">TeamMatch AI</span>
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-600 mt-1">Join TeamMatch AI today</p>
+    <div className="min-h-screen bg-white flex">
+      <div className="hidden lg:flex lg:w-1/2 bg-gray-50 items-center justify-center border-r border-gray-100">
+        <div className="max-w-sm text-center px-8">
+          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-6">
+            <span className="text-white font-bold text-lg">TM</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Join TeamMatch AI</h2>
+          <p className="text-sm text-gray-500">Create a profile, discover projects, find teammates, and build amazing things together.</p>
         </div>
-
-        <div className="card">
+      </div>
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden flex items-center space-x-2 mb-8">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xs">TM</span>
+            </div>
+            <span className="text-lg font-bold text-gray-900">TeamMatch AI</span>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Create account</h1>
+          <p className="text-sm text-gray-500 mb-6">Fill in the details to get started</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">{error}</div>
+              <div className="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm border border-red-200">{error}</div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="input-field"
-                required
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="input-field"
-                required
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
-                required
-                minLength={6}
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" required minLength={6} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">I want to</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: 'STUDENT', label: 'Find Projects' },
-                  { value: 'PROJECT_CREATOR', label: 'Create Projects' },
-                  { value: 'BOTH', label: 'Both' },
+                  { value: 'STUDENT', label: 'Find Projects', desc: 'Join a team' },
+                  { value: 'PROJECT_CREATOR', label: 'Create Projects', desc: 'Build a team' },
+                  { value: 'BOTH', label: 'Both', desc: 'Do everything' },
                 ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setRole(opt.value)}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
-                      role === opt.value
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {opt.label}
+                  <button key={opt.value} type="button" onClick={() => setRole(opt.value as any)}
+                    className={`p-3 rounded-lg border text-center transition-all text-sm ${
+                      role === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}>
+                    <p className="font-medium text-xs">{opt.label}</p>
+                    <p className="text-[10px] mt-0.5 opacity-70">{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -103,10 +85,10 @@ export default function Register() {
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-gray-500">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 font-medium hover:underline">Sign In</Link>
-          </div>
+            <Link to="/login" className="text-blue-600 font-medium hover:underline">Sign in</Link>
+          </p>
         </div>
       </div>
     </div>

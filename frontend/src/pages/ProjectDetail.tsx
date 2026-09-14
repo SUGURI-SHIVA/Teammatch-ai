@@ -1,230 +1,213 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
-import { MatchScore, SkillBadge, InterestBadge, RoleBadge, ProgressBar, MatchReasons } from '../components/UI';
-import { ArrowLeft, Users, Target, Clock, CheckCircle, XCircle, Mail, UserPlus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { ArrowLeft, Users, MapPin, Clock, Send, UserPlus, Trash2, Settings } from 'lucide-react';
 
 export default function ProjectDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [project, setProject] = useState<any>(null);
-  const [joinRequests, setJoinRequests] = useState<any[]>([]);
-  const [teamCoverage, setTeamCoverage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [message, setMessage] = useState('');
+  const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => { loadProject(); }, [id]);
 
   const loadProject = async () => {
-    if (!id) return;
     try {
-      const [p, coverage] = await Promise.allSettled([
-        api.projects.get(id),
-        api.recommendations.teamCoverage(id),
-      ]);
-      if (p.status === 'fulfilled') {
-        setProject(p.value);
-        if (p.value.creatorId === user?.id) {
-          const jr = await api.joinRequests.forProject(id);
-          setJoinRequests(jr);
-        }
-      }
-      if (coverage.status === 'fulfilled') setTeamCoverage(coverage.value);
+      const data = await api.projects.get(id!);
+      setProject(data);
     } catch {}
     setLoading(false);
   };
 
+  const isOwner = project?.creatorId === user?.id;
+  const isMember = project?.members?.some((m: any) => m.userId === user?.id);
+  const hasRequested = project?.joinRequests?.some((r: any) => r.studentId === user?.id && r.status === 'pending');
+
+  const handleJoin = async () => {
+    if (!selectedRole) return;
+    setJoining(true);
+    try {
+      await api.joinRequests.send({ projectId: id, role: selectedRole, message });
+      setRequestSent(true);
+    } catch {}
+    setJoining(false);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.projects.delete(id!);
+      navigate('/dashboard');
+    } catch {}
+  };
+
   const handleAcceptRequest = async (requestId: string) => {
-    setActionLoading(requestId);
     try {
       await api.joinRequests.accept(requestId);
-      setJoinRequests(joinRequests.map((r) => r.id === requestId ? { ...r, status: 'accepted' } : r));
       loadProject();
-    } catch (err: any) { alert(err.message); }
-    setActionLoading(null);
+    } catch {}
   };
 
   const handleRejectRequest = async (requestId: string) => {
-    setActionLoading(requestId);
     try {
       await api.joinRequests.reject(requestId);
-      setJoinRequests(joinRequests.map((r) => r.id === requestId ? { ...r, status: 'rejected' } : r));
-    } catch (err: any) { alert(err.message); }
-    setActionLoading(null);
+      loadProject();
+    } catch {}
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
-  if (!project) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Project not found</div></div>;
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500">Loading project...</div>;
+  if (!project) return <div className="p-8 text-center text-sm text-gray-500">Project not found</div>;
 
-  const isCreator = project.creatorId === user?.id;
-  const isMember = project.members?.some((m: any) => m.userId === user?.id);
+  const pendingRequests = project.joinRequests?.filter((r: any) => r.status === 'pending') || [];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <Link to="/dashboard" className="text-sm text-primary-600 hover:underline flex items-center space-x-1 mb-6">
-          <ArrowLeft size={14} /><span>Back to Dashboard</span>
-        </Link>
+    <div className="p-8 max-w-4xl">
+      <button onClick={() => navigate(-1)} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-4">
+        <ArrowLeft size={14} /> Back
+      </button>
 
-        <div className="card mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{project.title}</h1>
-              {project.domain && <p className="text-gray-500 mt-1">{project.domain}</p>}
+      <div className="card mb-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-xl font-bold text-gray-900">{project.title}</h1>
+              {project.domain && <span className="badge badge-blue">{project.domain}</span>}
             </div>
-            <span className={`badge ${project.status === 'open' ? 'badge-green' : 'badge-orange'}`}>
-              {project.status}
-            </span>
-          </div>
-          <p className="text-gray-600 mb-6">{project.description}</p>
-
-          <div className="grid md:grid-cols-3 gap-4 mb-6">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Users size={16} />
-              <span>{project.members?.length || 0}/{project.teamSize} members</span>
-            </div>
-            {project.experienceLevel && (
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Target size={16} />
-                <span>{project.experienceLevel}</span>
-              </div>
-            )}
-            {project.availability && (
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Clock size={16} />
-                <span>{project.availability}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-4">
-            <h3 className="font-bold text-sm text-gray-700 mb-2">Required Skills</h3>
-            <div className="flex flex-wrap gap-2">
-              {project.skills?.map((s: any) => <SkillBadge key={s.id} name={s.skill.name} />)}
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h3 className="font-bold text-sm text-gray-700 mb-2">Roles Needed</h3>
-            <div className="flex flex-wrap gap-2">
-              {project.roles?.map((r: any) => <RoleBadge key={r.id} name={r.role.name} />)}
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h3 className="font-bold text-sm text-gray-700 mb-2">Interests</h3>
-            <div className="flex flex-wrap gap-2">
-              {project.interests?.map((i: any) => <InterestBadge key={i.id} name={i.interest.name} />)}
-            </div>
-          </div>
-        </div>
-
-        {teamCoverage && (
-          <div className="card mb-6">
-            <h2 className="text-lg font-bold mb-4">Team Skill Coverage</h2>
-            <ProgressBar value={teamCoverage.coverage} label="Coverage" color="bg-accent-500" />
-            <div className="grid md:grid-cols-3 gap-4 mt-4">
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Covered Skills</p>
-                <div className="flex flex-wrap gap-1">
-                  {teamCoverage.coveredSkills?.map((s: string) => (
-                    <span key={s} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">✓ {s}</span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Missing Skills</p>
-                <div className="flex flex-wrap gap-1">
-                  {teamCoverage.missingSkills?.length === 0 ? (
-                    <span className="text-xs text-gray-500">None</span>
-                  ) : teamCoverage.missingSkills?.map((s: string) => (
-                    <span key={s} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">✗ {s}</span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Duplicate Skills</p>
-                <div className="flex flex-wrap gap-1">
-                  {teamCoverage.duplicateSkills?.length === 0 ? (
-                    <span className="text-xs text-gray-500">None</span>
-                  ) : teamCoverage.duplicateSkills?.map((d: any) => (
-                    <span key={d.skill} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">{d.skill} ×{d.count}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="card mb-6">
-          <h2 className="text-lg font-bold mb-4">Current Team</h2>
-          {project.members?.length === 0 ? (
-            <p className="text-gray-500 text-sm">No members yet</p>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-3">
-              {project.members?.map((m: any) => (
-                <div key={m.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-bold">
-                    {m.user?.name?.charAt(0) || '?'}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{m.user?.name}</p>
-                    <p className="text-xs text-gray-500">{m.role || 'Member'}</p>
-                  </div>
-                </div>
+            <p className="text-sm text-gray-600 mb-4">{project.description}</p>
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {project.requiredSkills?.map((s: any) => (
+                <span key={s.id || s} className="badge badge-gray">{s.name || s}</span>
               ))}
+            </div>
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><Users size={14} /> {project.members?.length || 0}/{project.teamSize} members</span>
+              <span className="flex items-center gap-1"><Clock size={14} /> {project.availability || 'Flexible'}</span>
+              <span className="flex items-center gap-1"><MapPin size={14} /> {project.experienceLevel || 'Any level'}</span>
+            </div>
+          </div>
+          {isOwner && (
+            <div className="flex gap-2 ml-4">
+              <Link to={`/projects/${id}/find-teammates`} className="btn-primary text-xs flex items-center gap-1">
+                <UserPlus size={14} /> Find Teammates
+              </Link>
+              <button onClick={() => setShowDelete(!showDelete)} className="btn-ghost text-red-500 px-2"><Trash2 size={16} /></button>
             </div>
           )}
         </div>
 
-        {isCreator && joinRequests.length > 0 && (
-          <div className="card mb-6">
-            <h2 className="text-lg font-bold mb-4">Join Requests</h2>
-            <div className="space-y-3">
-              {joinRequests.map((req: any) => (
-                <div key={req.id} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-bold">
-                        {req.student?.name?.charAt(0) || '?'}
-                      </div>
-                      <div>
-                        <p className="font-medium">{req.student?.name}</p>
-                        <p className="text-xs text-gray-500">{req.student?.email}</p>
-                      </div>
-                    </div>
-                    {req.matchScore && <MatchScore score={req.matchScore} size="sm" />}
-                  </div>
-                  {req.matchScore && <MatchReasons reasons={req.reasons || []} />}
-                  {req.status === 'pending' && (
-                    <div className="flex space-x-2 mt-3">
-                      <button onClick={() => handleAcceptRequest(req.id)} disabled={actionLoading === req.id}
-                        className="btn-accent text-sm py-2 flex items-center space-x-1">
-                        <CheckCircle size={16} /><span>Accept</span>
-                      </button>
-                      <button onClick={() => handleRejectRequest(req.id)} disabled={actionLoading === req.id}
-                        className="btn-danger text-sm py-2 flex items-center space-x-1">
-                        <XCircle size={16} /><span>Reject</span>
-                      </button>
-                    </div>
-                  )}
-                  {req.status !== 'pending' && (
-                    <span className={`badge mt-2 ${req.status === 'accepted' ? 'badge-green' : 'badge-orange'}`}>
-                      {req.status}
-                    </span>
-                  )}
-                </div>
-              ))}
+        {showDelete && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-sm text-red-600 mb-2">Are you sure? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={handleDelete} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700">Delete Project</button>
+              <button onClick={() => setShowDelete(false)} className="btn-ghost text-xs">Cancel</button>
             </div>
           </div>
         )}
+      </div>
 
-        {isCreator && (
-          <Link to={`/projects/${project.id}/find-teammates`} className="btn-primary w-full text-center py-3 flex items-center justify-center space-x-2">
-            <UserPlus size={20} /><span>Find Teammates</span>
-          </Link>
-        )}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <h2 className="section-title mb-3">Team Members</h2>
+          <div className="space-y-2">
+            {project.members?.map((member: any) => (
+              <div key={member.id} className="card py-3 flex items-center gap-3">
+                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-gray-600">
+                    {member.user?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{member.user?.name}</p>
+                  <p className="text-xs text-gray-500">{member.role}</p>
+                </div>
+              </div>
+            ))}
+            {(!project.members || project.members.length === 0) && (
+              <p className="text-sm text-gray-500">No members yet</p>
+            )}
+          </div>
+
+          {project.requiredRoles && project.requiredRoles.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-xs font-medium text-gray-600 mb-2">Open Roles</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {project.requiredRoles.map((r: any) => (
+                  <span key={r.id || r} className="badge badge-purple">{r.name || r}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div>
+          {!isOwner && !isMember && !hasRequested && !requestSent && (
+            <div className="card">
+              <h2 className="section-title mb-3">Request to Join</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Select Role</label>
+                  <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="input-field text-sm">
+                    <option value="">Choose a role</option>
+                    {project.requiredRoles?.map((r: any) => (
+                      <option key={r.id || r} value={r.name || r}>{r.name || r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Message (optional)</label>
+                  <textarea value={message} onChange={(e) => setMessage(e.target.value)} className="input-field min-h-[60px]" placeholder="Why do you want to join?" />
+                </div>
+                <button onClick={handleJoin} disabled={joining || !selectedRole} className="btn-primary w-full flex items-center justify-center gap-2">
+                  <Send size={14} /> {joining ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {requestSent && (
+            <div className="card bg-green-50 border-green-200">
+              <p className="text-sm font-medium text-green-800">Request sent successfully</p>
+              <p className="text-xs text-green-600 mt-1">The project creator will review your request.</p>
+            </div>
+          )}
+
+          {isOwner && pendingRequests.length > 0 && (
+            <div>
+              <h2 className="section-title mb-3">Join Requests ({pendingRequests.length})</h2>
+              <div className="space-y-2">
+                {pendingRequests.map((req: any) => (
+                  <div key={req.id} className="card py-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-gray-600">
+                            {req.student?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{req.student?.name}</p>
+                          <p className="text-xs text-gray-500">Role: {req.role}</p>
+                          {req.matchScore != null && <span className="badge badge-blue mt-1">{req.matchScore}% match</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleAcceptRequest(req.id)} className="btn-accent text-xs py-1.5 px-2.5">Accept</button>
+                        <button onClick={() => handleRejectRequest(req.id)} className="btn-danger text-xs py-1.5 px-2.5">Reject</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

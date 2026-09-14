@@ -1,140 +1,137 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
-import { MatchScore, SkillBadge, MatchReasons, ProgressBar } from '../components/UI';
-import { CheckCircle, XCircle, Mail, ArrowLeft } from 'lucide-react';
+import { Check, X, FolderOpen, Clock } from 'lucide-react';
 
 export default function Invitations() {
-  const [invitations, setInvitations] = useState<any[]>([]);
+  const [received, setReceived] = useState<any[]>([]);
+  const [sent, setSent] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => { loadInvitations(); }, []);
 
   const loadInvitations = async () => {
     try {
-      const data = await api.invitations.received();
-      setInvitations(data);
+      const [r, s] = await Promise.allSettled([
+        api.invitations.received(),
+        api.invitations.sent(),
+      ]);
+      if (r.status === 'fulfilled') setReceived(r.value);
+      if (s.status === 'fulfilled') setSent(s.value);
     } catch {}
     setLoading(false);
   };
 
-  const handleAccept = async (id: string) => {
+  const handleAction = async (id: string, action: 'accepted' | 'declined') => {
     setActionLoading(id);
     try {
-      await api.invitations.accept(id);
-      setInvitations(invitations.map((inv) => inv.id === id ? { ...inv, status: 'accepted' } : inv));
-    } catch (err: any) { alert(err.message); }
+      if (action === 'accepted') await api.invitations.accept(id);
+      else await api.invitations.decline(id);
+      setReceived((prev) => prev.map((inv) => inv.id === id ? { ...inv, status: action } : inv));
+    } catch {}
     setActionLoading(null);
   };
 
-  const handleDecline = async (id: string) => {
-    setActionLoading(id);
-    try {
-      await api.invitations.decline(id);
-      setInvitations(invitations.map((inv) => inv.id === id ? { ...inv, status: 'declined' } : inv));
-    } catch (err: any) { alert(err.message); }
-    setActionLoading(null);
-  };
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500">Loading invitations...</div>;
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
-
-  const pending = invitations.filter((i) => i.status === 'pending');
-  const processed = invitations.filter((i) => i.status !== 'pending');
+  const pendingReceived = received.filter((i) => i.status === 'pending');
+  const pendingSent = sent.filter((i) => i.status === 'pending');
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4">
-        <Link to="/dashboard" className="text-sm text-primary-600 hover:underline flex items-center space-x-1 mb-6">
-          <ArrowLeft size={14} /><span>Back to Dashboard</span>
-        </Link>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Invitations</h1>
-        <p className="text-gray-600 mb-8">Projects that have invited you to join</p>
-
-        {pending.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-bold mb-4">Pending Invitations ({pending.length})</h2>
-            <div className="space-y-4">
-              {pending.map((inv) => (
-                <div key={inv.id} className="card">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <Link to={`/projects/${inv.project?.id}`} className="text-lg font-bold text-primary-600 hover:underline">
-                        {inv.project?.title}
-                      </Link>
-                      <p className="text-sm text-gray-500">From {inv.sender?.name}</p>
-                    </div>
-                    {inv.matchScore && <MatchScore score={inv.matchScore} />}
-                  </div>
-
-                  {inv.project?.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{inv.project.description}</p>
-                  )}
-
-                  {inv.project?.skills && (
-                    <div className="mb-3">
-                      <div className="flex flex-wrap gap-1">
-                        {inv.project.skills.map((s: any) => <SkillBadge key={s.id} name={s.skill.name} />)}
-                      </div>
-                    </div>
-                  )}
-
-                  {inv.matchScore && (
-                    <div className="mb-3">
-                      <ProgressBar value={inv.matchScore} label="Overall Match" color="bg-accent-500" />
-                    </div>
-                  )}
-
-                  {inv.matchScore && <MatchReasons reasons={inv.reasons || []} />}
-
-                  <div className="flex space-x-3 mt-4">
-                    <button onClick={() => handleAccept(inv.id)} disabled={actionLoading === inv.id}
-                      className="btn-accent flex items-center space-x-1">
-                      <CheckCircle size={18} /><span>Accept</span>
-                    </button>
-                    <button onClick={() => handleDecline(inv.id)} disabled={actionLoading === inv.id}
-                      className="btn-danger flex items-center space-x-1">
-                      <XCircle size={18} /><span>Decline</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {pending.length === 0 && processed.length === 0 && (
-          <div className="text-center py-12">
-            <Mail size={48} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No invitations yet</p>
-            <Link to="/discover-projects" className="text-primary-600 hover:underline text-sm mt-2 inline-block">
-              Discover projects to get started
-            </Link>
-          </div>
-        )}
-
-        {processed.length > 0 && (
-          <div>
-            <h2 className="text-lg font-bold mb-4">Past Invitations</h2>
-            <div className="space-y-3">
-              {processed.map((inv) => (
-                <div key={inv.id} className="card opacity-75">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{inv.project?.title}</p>
-                      <p className="text-sm text-gray-500">From {inv.sender?.name}</p>
-                    </div>
-                    <span className={`badge ${inv.status === 'accepted' ? 'badge-green' : 'badge-orange'}`}>
-                      {inv.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+    <div className="p-8 max-w-4xl">
+      <div className="mb-6">
+        <h1 className="page-title">Invitations</h1>
+        <p className="page-subtitle">Manage your project invitations</p>
       </div>
+
+      <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg w-fit">
+        <button onClick={() => setActiveTab('received')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'received' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+          Received ({pendingReceived.length})
+        </button>
+        <button onClick={() => setActiveTab('sent')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'sent' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+          Sent ({pendingSent.length})
+        </button>
+      </div>
+
+      {activeTab === 'received' && (
+        <>
+          {pendingReceived.length === 0 ? (
+            <EmptyState message="No pending invitations" sub="You'll see team invitations here." />
+          ) : (
+            <div className="space-y-3">
+              {pendingReceived.map((inv) => (
+                <div key={inv.id} className="card flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">{inv.project?.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">From {inv.sender?.name} • Role: {inv.role}</p>
+                    {inv.matchScore != null && (
+                      <span className="badge badge-blue mt-1">{inv.matchScore}% match</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <button onClick={() => handleAction(inv.id, 'accepted')} disabled={actionLoading === inv.id} className="btn-accent text-xs py-2 px-3 flex items-center gap-1">
+                      <Check size={14} /> Accept
+                    </button>
+                    <button onClick={() => handleAction(inv.id, 'declined')} disabled={actionLoading === inv.id} className="btn-danger text-xs py-2 px-3 flex items-center gap-1">
+                      <X size={14} /> Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {received.filter((i) => i.status !== 'pending').length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">Past Invitations</h3>
+              <div className="space-y-2">
+                {received.filter((i) => i.status !== 'pending').map((inv) => (
+                  <div key={inv.id} className="card bg-gray-50 opacity-70">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-700">{inv.project?.title}</p>
+                        <p className="text-xs text-gray-500">From {inv.sender?.name}</p>
+                      </div>
+                      <span className={`badge ${inv.status === 'accepted' ? 'badge-green' : 'badge-gray'}`}>{inv.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'sent' && (
+        <>
+          {pendingSent.length === 0 ? (
+            <EmptyState message="No pending sent invitations" sub="Invitations you send will appear here." />
+          ) : (
+            <div className="space-y-3">
+              {pendingSent.map((inv) => (
+                <div key={inv.id} className="card flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{inv.project?.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">To {inv.receiver?.name} • Role: {inv.role}</p>
+                  </div>
+                  <span className="badge badge-orange flex items-center gap-1"><Clock size={12} /> Pending</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ message, sub }: { message: string; sub: string }) {
+  return (
+    <div className="text-center py-16">
+      <FolderOpen size={40} className="text-gray-300 mx-auto mb-3" />
+      <p className="text-sm text-gray-500">{message}</p>
+      <p className="text-xs text-gray-400 mt-1">{sub}</p>
     </div>
   );
 }
