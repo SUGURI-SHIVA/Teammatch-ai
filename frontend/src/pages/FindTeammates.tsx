@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, ArrowLeft, Search, Filter, X, Send } from 'lucide-react';
+import { ArrowLeft, Search, Send } from 'lucide-react';
 
 const roles = ['Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'ML Developer', 'Data Analyst', 'UI/UX Designer', 'Project Manager', 'Mobile Developer', 'DevOps Engineer', 'QA Tester'];
 
@@ -19,9 +19,7 @@ export default function FindTeammates() {
   const [inviting, setInviting] = useState<string | null>(null);
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadData();
-  }, [projectId]);
+  useEffect(() => { loadData(); }, [projectId]);
 
   const loadData = async () => {
     try {
@@ -30,9 +28,13 @@ export default function FindTeammates() {
         api.discovery.teammates(projectId),
         api.projects.my(),
       ]);
-      if (teammatesData.status === 'fulfilled') setTeammates(teammatesData.value);
-      if (projectsData.status === 'fulfilled') setMyProjects(projectsData.value);
-    } catch {}
+      if (teammatesData.status === 'fulfilled') {
+        setTeammates(Array.isArray(teammatesData.value) ? teammatesData.value : []);
+      }
+      if (projectsData.status === 'fulfilled') {
+        setMyProjects(Array.isArray(projectsData.value) ? projectsData.value : []);
+      }
+    } catch { setTeammates([]); setMyProjects([]); }
     setLoading(false);
   };
 
@@ -42,7 +44,7 @@ export default function FindTeammates() {
     try {
       const project = myProjects.find((p) => p.id === selectedProject);
       if (!project) return;
-      const role = project.requiredRoles?.[0]?.name || 'Team Member';
+      const role = project.requiredRoles?.[0]?.name || project.roles?.[0]?.name || 'Team Member';
       await api.invitations.send({ projectId: selectedProject, receiverId: userId, role, message: `Join ${project.title}` });
       setSentInvites(new Set([...sentInvites, userId]));
     } catch (error) {
@@ -51,14 +53,18 @@ export default function FindTeammates() {
     setInviting(null);
   };
 
-  const filtered = teammates.filter((t: any) => {
+  const filtered = (Array.isArray(teammates) ? teammates : []).filter((t: any) => {
     if (search) {
       const q = search.toLowerCase();
-      if (!t.name?.toLowerCase().includes(q) && !t.course?.toLowerCase().includes(q)) return false;
+      if (!t.name?.toLowerCase().includes(q) && !t.course?.toLowerCase().includes(q) && !t.user?.name?.toLowerCase().includes(q)) return false;
     }
-    if (selectedRole && !t.preferredRoles?.some((r: any) => r.name === selectedRole)) return false;
+    if (selectedRole && !t.preferredRoles?.some((r: any) => (r.name || r) === selectedRole)) return false;
     return true;
   });
+
+  const getSkillName = (s: any) => typeof s === 'string' ? s : s.name || s.skill?.name || '';
+  const getTeammateName = (t: any) => t.name || t.user?.name || 'Unknown';
+  const getInitials = (name: string) => name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 
   if (loading) return <div className="p-8 text-center text-sm text-gray-500">Finding teammates...</div>;
 
@@ -110,14 +116,14 @@ export default function FindTeammates() {
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-medium text-gray-600">
-                      {teammate.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      {getInitials(getTeammateName(teammate))}
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{teammate.name}</p>
-                    <p className="text-xs text-gray-500">{teammate.course} • {teammate.year}</p>
+                    <p className="text-sm font-semibold text-gray-900">{getTeammateName(teammate)}</p>
+                    <p className="text-xs text-gray-500">{teammate.course || ''}{teammate.course && teammate.year ? ' • ' : ''}{teammate.year || ''}</p>
                     {teammate.preferredRoles?.[0] && (
-                      <span className="badge badge-blue mt-1">{teammate.preferredRoles[0].name}</span>
+                      <span className="badge badge-blue mt-1">{teammate.preferredRoles[0].name || teammate.preferredRoles[0]}</span>
                     )}
                   </div>
                 </div>
@@ -129,16 +135,16 @@ export default function FindTeammates() {
                 )}
               </div>
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {(teammate.skills || []).slice(0, 4).map((s: any) => (
-                  <span key={s.id || s} className="badge badge-gray">{s.name || s}</span>
+                {(Array.isArray(teammate.skills) ? teammate.skills : []).slice(0, 4).map((s: any) => (
+                  <span key={s.id || s} className="badge badge-gray">{getSkillName(s)}</span>
                 ))}
               </div>
-              {teammate.matchReasons && teammate.matchReasons.length > 0 && (
+              {Array.isArray(teammate.reasons) && teammate.reasons.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-gray-100">
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Why recommended</p>
                   <div className="flex flex-wrap gap-1">
-                    {teammate.matchReasons.slice(0, 2).map((reason: string, i: number) => (
-                      <span key={i} className="text-[11px] text-green-700 bg-green-50 px-2 py-0.5 rounded">✓ {reason}</span>
+                    {teammate.reasons.slice(0, 2).map((reason: string, i: number) => (
+                      <span key={i} className="text-[11px] text-green-700 bg-green-50 px-2 py-0.5 rounded">{reason}</span>
                     ))}
                   </div>
                 </div>
@@ -153,7 +159,6 @@ export default function FindTeammates() {
                       {inviting === teammate.id ? 'Sending...' : 'Invite'}
                     </button>
                   )}
-                  <Link to={`/find-teammates?profile=${teammate.id}`} className="btn-ghost text-xs py-2">View Profile</Link>
                 </div>
               )}
             </div>

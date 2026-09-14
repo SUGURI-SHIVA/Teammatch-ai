@@ -14,8 +14,9 @@ export default function JoinRequests() {
   const loadProjects = async () => {
     try {
       const data = await api.projects.my();
-      setProjects(data);
-      const pendingProjects = data.filter((p: any) => p.joinRequests?.some((r: any) => r.status === 'pending'));
+      const projectList = Array.isArray(data) ? data : [];
+      setProjects(projectList);
+      const pendingProjects = projectList.filter((p: any) => Array.isArray(p.joinRequests) && p.joinRequests.some((r: any) => r.status === 'pending'));
       if (pendingProjects.length > 0) {
         setSelectedProject(pendingProjects[0].id);
         setRequests(pendingProjects[0].joinRequests.filter((r: any) => r.status === 'pending'));
@@ -27,7 +28,7 @@ export default function JoinRequests() {
   const loadRequests = (projectId: string) => {
     setSelectedProject(projectId);
     const project = projects.find((p) => p.id === projectId);
-    setRequests(project?.joinRequests?.filter((r: any) => r.status === 'pending') || []);
+    setRequests(Array.isArray(project?.joinRequests) ? project.joinRequests.filter((r: any) => r.status === 'pending') : []);
   };
 
   const handleAction = async (requestId: string, action: 'accepted' | 'rejected') => {
@@ -38,7 +39,7 @@ export default function JoinRequests() {
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       setProjects((prev) => prev.map((p) => ({
         ...p,
-        joinRequests: p.joinRequests?.filter((r: any) => r.id !== requestId),
+        joinRequests: Array.isArray(p.joinRequests) ? p.joinRequests.filter((r: any) => r.id !== requestId) : [],
       })));
     } catch {}
     setActionLoading(null);
@@ -65,7 +66,7 @@ export default function JoinRequests() {
             <label className="block text-xs font-medium text-gray-600 mb-1">Select project</label>
             <select value={selectedProject} onChange={(e) => loadRequests(e.target.value)} className="input-field text-sm max-w-md">
               {projects.map((p) => {
-                const pendingCount = p.joinRequests?.filter((r: any) => r.status === 'pending').length || 0;
+                const pendingCount = Array.isArray(p.joinRequests) ? p.joinRequests.filter((r: any) => r.status === 'pending').length : 0;
                 return (
                   <option key={p.id} value={p.id}>
                     {p.title} {pendingCount > 0 ? `(${pendingCount} pending)` : ''}
@@ -89,16 +90,16 @@ export default function JoinRequests() {
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-medium text-gray-600">
-                          {req.student?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          {(req.student?.name || '?').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{req.student?.name}</p>
                         <p className="text-xs text-gray-500">Requested role: {req.role}</p>
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {req.student?.skills?.slice(0, 4).map((s: any) => (
-                            <span key={s.id || s} className="badge badge-gray">{s.name || s}</span>
-                          ))}
+                          {Array.isArray(req.student?.skills) ? req.student.skills.slice(0, 4).map((s: any) => (
+                            <span key={s.id || s} className="badge badge-gray">{typeof s === 'string' ? s : s.name || s.skill?.name || ''}</span>
+                          )) : null}
                         </div>
                         {req.matchScore != null && (
                           <div className="mt-2">

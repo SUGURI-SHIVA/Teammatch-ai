@@ -81,8 +81,8 @@ export default function ProjectDetail() {
             </div>
             <p className="text-sm text-gray-600 mb-4">{project.description}</p>
             <div className="flex flex-wrap gap-1.5 mb-4">
-              {project.requiredSkills?.map((s: any) => (
-                <span key={s.id || s} className="badge badge-gray">{s.name || s}</span>
+              {(Array.isArray(project.requiredSkills) ? project.requiredSkills : Array.isArray(project.skills) ? project.skills : []).map((s: any) => (
+                <span key={s.id || s} className="badge badge-gray">{typeof s === 'string' ? s : s.name || s.skill?.name || ''}</span>
               ))}
             </div>
             <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -120,7 +120,7 @@ export default function ProjectDetail() {
               <div key={member.id} className="card py-3 flex items-center gap-3">
                 <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
                   <span className="text-xs font-medium text-gray-600">
-                    {member.user?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                    {(member.user?.name || '?').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                   </span>
                 </div>
                 <div>
@@ -134,11 +134,11 @@ export default function ProjectDetail() {
             )}
           </div>
 
-          {project.requiredRoles && project.requiredRoles.length > 0 && (
+          {(Array.isArray(project.requiredRoles) ? project.requiredRoles.length : 0) > 0 && (
             <div className="mt-4">
               <h3 className="text-xs font-medium text-gray-600 mb-2">Open Roles</h3>
               <div className="flex flex-wrap gap-1.5">
-                {project.requiredRoles.map((r: any) => (
+                {(Array.isArray(project.requiredRoles) ? project.requiredRoles : project.roles || []).map((r: any) => (
                   <span key={r.id || r} className="badge badge-purple">{r.name || r}</span>
                 ))}
               </div>
@@ -155,7 +155,7 @@ export default function ProjectDetail() {
                   <label className="block text-xs font-medium text-gray-600 mb-1">Select Role</label>
                   <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="input-field text-sm">
                     <option value="">Choose a role</option>
-                    {project.requiredRoles?.map((r: any) => (
+                    {(Array.isArray(project.requiredRoles) ? project.requiredRoles : project.roles || []).map((r: any) => (
                       <option key={r.id || r} value={r.name || r}>{r.name || r}</option>
                     ))}
                   </select>
@@ -188,7 +188,7 @@ export default function ProjectDetail() {
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
                           <span className="text-xs font-medium text-gray-600">
-                            {req.student?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                            {(req.student?.name || '?').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                           </span>
                         </div>
                         <div>

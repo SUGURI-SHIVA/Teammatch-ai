@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import { Search, Users, FolderOpen, ArrowRight, Plus, Clock, Target, ChevronRight } from 'lucide-react';
+import { Search, Users, FolderOpen, Plus, Target, ChevronRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -22,10 +22,10 @@ export default function Dashboard() {
         api.invitations.received(), api.notifications.list(),
       ]);
       if (p.status === 'fulfilled') setProfile(p.value);
-      if (mp.status === 'fulfilled') setMyProjects(mp.value);
-      if (mem.status === 'fulfilled') setMemberProjects(mem.value);
-      if (inv.status === 'fulfilled') setInvitations(inv.value);
-      if (notifs.status === 'fulfilled') setNotifications(notifs.value);
+      if (mp.status === 'fulfilled') setMyProjects(Array.isArray(mp.value) ? mp.value : []);
+      if (mem.status === 'fulfilled') setMemberProjects(Array.isArray(mem.value) ? mem.value : []);
+      if (inv.status === 'fulfilled') setInvitations(Array.isArray(inv.value) ? inv.value : []);
+      if (notifs.status === 'fulfilled') setNotifications(Array.isArray(notifs.value) ? notifs.value : []);
     } catch {}
     setLoading(false);
   };
@@ -107,10 +107,10 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{project.title}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{project.members?.length || 0}/{project.teamSize} members</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{Array.isArray(project.members) ? project.members.length : 0}/{project.teamSize} members</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {project.joinRequests?.filter((r: any) => r.status === 'pending').length > 0 && (
+                        {Array.isArray(project.joinRequests) && project.joinRequests.filter((r: any) => r.status === 'pending').length > 0 && (
                           <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                             {project.joinRequests.filter((r: any) => r.status === 'pending').length}
                           </span>
@@ -145,7 +145,7 @@ export default function Dashboard() {
                         <p className="text-sm font-medium text-gray-900">{inv.project?.title}</p>
                         <p className="text-xs text-gray-500 mt-0.5">From {inv.sender?.name}</p>
                       </div>
-                      {inv.matchScore && (
+                      {inv.matchScore != null && (
                         <span className="text-sm font-semibold text-blue-600">{inv.matchScore}%</span>
                       )}
                     </div>
@@ -163,7 +163,7 @@ export default function Dashboard() {
               {memberProjects.slice(0, 4).map((project: any) => (
                 <Link key={project.id} to={`/projects/${project.id}`} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-200 transition-all">
                   <p className="text-sm font-medium text-gray-900">{project.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{project.members?.length || 0} members</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{Array.isArray(project.members) ? project.members.length : 0} members</p>
                 </Link>
               ))}
             </div>

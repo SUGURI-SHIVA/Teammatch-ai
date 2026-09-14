@@ -34,7 +34,7 @@ export default function StudentProfile() {
         name: data.name || '', email: data.email || '', course: data.course || '', year: data.year || '',
         bio: data.bio || '', experienceLevel: data.experienceLevel || 'Intermediate',
         preferredRoles: data.preferredRoles?.map((r: any) => r.name) || [],
-        availability: data.availability || 'Flexible', learningGoals: data.learningGoals || '',
+        availability: data.availability || 'Flexible', learningGoals: Array.isArray(data.learningGoals) ? data.learningGoals.map((g: any) => g.skill || g).join(', ') : (data.learningGoals || ''),
       });
       setSkills(data.skills?.map((s: any) => s.name) || []);
       setInterests(data.interests?.map((i: any) => i.name) || []);

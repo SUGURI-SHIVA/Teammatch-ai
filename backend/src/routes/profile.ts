@@ -79,7 +79,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
             ),
           },
           learningGoals: {
-            create: (learningGoals || []).map((skill: string) => ({ skill })),
+            create: (Array.isArray(learningGoals) ? learningGoals : (learningGoals ? [learningGoals] : [])).map((skill: string) => ({ skill })),
           },
           previousProjects: {
             create: (previousProjects || []).map((p: any) => ({
@@ -141,7 +141,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           ),
         },
         learningGoals: {
-          create: (learningGoals || []).map((skill: string) => ({ skill })),
+          create: (Array.isArray(learningGoals) ? learningGoals : (learningGoals ? [learningGoals] : [])).map((skill: string) => ({ skill })),
         },
         previousProjects: {
           create: (previousProjects || []).map((p: any) => ({

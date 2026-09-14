@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
-import { Search, Filter, MapPin, Users, ChevronRight, X } from 'lucide-react';
+import { Search, Filter, Users, X } from 'lucide-react';
 
 const domains = ['Web Development', 'Mobile Development', 'AI/ML', 'Data Science', 'Game Development', 'Cybersecurity', 'DevOps', 'UI/UX', 'Cloud Computing', 'IoT'];
 const experienceLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
@@ -21,19 +21,21 @@ export default function DiscoverProjects() {
   const loadProjects = async () => {
     try {
       const data = await api.discovery.projects();
-      setProjects(data);
-    } catch {}
+      setProjects(Array.isArray(data) ? data : []);
+    } catch { setProjects([]); }
     setLoading(false);
   };
 
-  const filtered = projects.filter((p: any) => {
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.description?.toLowerCase().includes(search.toLowerCase())) return false;
+  const filtered = (Array.isArray(projects) ? projects : []).filter((p: any) => {
+    if (search && !p.title?.toLowerCase().includes(search.toLowerCase()) && !p.description?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filters.domain && p.domain !== filters.domain) return false;
     if (filters.experience && p.experienceLevel !== filters.experience) return false;
     if (filters.availability && p.availability !== filters.availability) return false;
     if (filters.minMatch && (p.matchScore || 0) < filters.minMatch) return false;
     return true;
   });
+
+  const getSkillName = (s: any) => typeof s === 'string' ? s : s.name || s.skill?.name || '';
 
   return (
     <div className="p-8 max-w-6xl">
@@ -114,14 +116,14 @@ export default function DiscoverProjects() {
                   </div>
                   <p className="text-xs text-gray-500 line-clamp-2 mb-3">{project.description}</p>
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {(project.requiredSkills || []).slice(0, 5).map((s: any) => (
-                      <span key={s.id || s} className="badge badge-gray">{s.name || s}</span>
+                    {(Array.isArray(project.skills) ? project.skills : []).slice(0, 5).map((s: any) => (
+                      <span key={s.id || s} className="badge badge-gray">{getSkillName(s)}</span>
                     ))}
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span className="flex items-center gap-1"><Users size={12} /> {project.members?.length || 0}/{project.teamSize} members</span>
-                    <span>{project.requiredRoles?.length || 0} open roles</span>
-                    {project.availability && <span className="flex items-center gap-1"><MapPin size={12} /> {project.availability}</span>}
+                    <span className="flex items-center gap-1"><Users size={12} /> {Array.isArray(project.members) ? project.members.length : 0}/{project.teamSize} members</span>
+                    <span>{Array.isArray(project.roles) ? project.roles.length : 0} open roles</span>
+                    {project.availability && <span>{project.availability}</span>}
                   </div>
                 </div>
                 {project.matchScore != null && (
@@ -131,12 +133,12 @@ export default function DiscoverProjects() {
                   </div>
                 )}
               </div>
-              {project.matchReasons && project.matchReasons.length > 0 && (
+              {Array.isArray(project.reasons) && project.reasons.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Why this matches you</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {project.matchReasons.slice(0, 3).map((reason: string, i: number) => (
-                      <span key={i} className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded">✓ {reason}</span>
+                    {project.reasons.slice(0, 3).map((reason: string, i: number) => (
+                      <span key={i} className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded">{reason}</span>
                     ))}
                   </div>
                 </div>

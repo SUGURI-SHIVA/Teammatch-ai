@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Check, X, FolderOpen, Clock } from 'lucide-react';
 
@@ -18,8 +17,8 @@ export default function Invitations() {
         api.invitations.received(),
         api.invitations.sent(),
       ]);
-      if (r.status === 'fulfilled') setReceived(r.value);
-      if (s.status === 'fulfilled') setSent(s.value);
+      if (r.status === 'fulfilled') setReceived(Array.isArray(r.value) ? r.value : []);
+      if (s.status === 'fulfilled') setSent(Array.isArray(s.value) ? s.value : []);
     } catch {}
     setLoading(false);
   };
