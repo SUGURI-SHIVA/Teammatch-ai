@@ -7,6 +7,7 @@ const router = Router();
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { name: true, email: true } });
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.user!.userId },
       include: {
@@ -17,7 +18,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         previousProjects: true,
       },
     });
-    res.json(profile);
+    res.json({ ...profile, name: user?.name || '', email: user?.email || '' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -25,7 +26,11 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { college, department, year, experience, availability, bio, skills, interests, preferredRoles, learningGoals, previousProjects } = req.body;
+    const { name, college, department, year, experience, availability, bio, skills, interests, preferredRoles, learningGoals, previousProjects } = req.body;
+
+    if (name) {
+      await prisma.user.update({ where: { id: req.user!.userId }, data: { name } });
+    }
 
     const existing = await prisma.studentProfile.findUnique({ where: { userId: req.user!.userId } });
 

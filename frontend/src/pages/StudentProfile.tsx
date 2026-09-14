@@ -8,13 +8,12 @@ const allRoles = ['Frontend Developer', 'Backend Developer', 'Full Stack Develop
 const experienceLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
 export default function StudentProfile() {
-  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({
     name: '', email: '', course: '', year: '', bio: '',
-    experienceLevel: 'Intermediate',
+    experience: 'Intermediate',
     preferredRoles: [] as string[],
     availability: 'Flexible',
     learningGoals: '',
@@ -29,15 +28,19 @@ export default function StudentProfile() {
   const loadProfile = async () => {
     try {
       const data = await api.profile.get();
-      setProfile(data);
       setForm({
-        name: data.name || '', email: data.email || '', course: data.course || '', year: data.year || '',
-        bio: data.bio || '', experienceLevel: data.experienceLevel || 'Intermediate',
+        name: data.name || '',
+        email: data.email || '',
+        course: data.college || data.course || '',
+        year: data.year || '',
+        bio: data.bio || '',
+        experience: data.experience || 'Intermediate',
         preferredRoles: data.preferredRoles?.map((r: any) => r.role?.name || r.name).filter(Boolean) || [],
-        availability: data.availability || 'Flexible', learningGoals: Array.isArray(data.learningGoals) ? data.learningGoals.map((g: any) => g.skill || g).join(', ') : (data.learningGoals || ''),
+        availability: data.availability || 'Flexible',
+        learningGoals: Array.isArray(data.learningGoals) ? data.learningGoals.map((g: any) => g.skill || g).join(', ') : (data.learningGoals || ''),
       });
-      setSkills(data.skills?.map((s: any) => s.name) || []);
-      setInterests(data.interests?.map((i: any) => i.name) || []);
+      setSkills(data.skills?.map((s: any) => s.skill?.name || s.name).filter(Boolean) || []);
+      setInterests(data.interests?.map((i: any) => i.interest?.name || i.name).filter(Boolean) || []);
     } catch {}
     setLoading(false);
   };
@@ -45,7 +48,19 @@ export default function StudentProfile() {
   const handleSave = async () => {
     setSaving(true); setMessage('');
     try {
-      await api.profile.save({ ...form, skills, interests });
+      await api.profile.save({
+        name: form.name,
+        college: form.course,
+        department: form.course,
+        year: form.year,
+        bio: form.bio,
+        experience: form.experience,
+        availability: form.availability,
+        skills,
+        interests,
+        preferredRoles: form.preferredRoles,
+        learningGoals: form.learningGoals,
+      });
       setMessage('Profile updated successfully');
       setTimeout(() => setMessage(''), 3000);
     } catch (e: any) { setMessage(e.message || 'Failed to save'); }
@@ -147,7 +162,7 @@ export default function StudentProfile() {
           <h2 className="section-title mb-3">Preferred Roles</h2>
           <div className="grid grid-cols-2 gap-2">
             {allRoles.map((role) => (
-              <button key={role} onClick={() => toggleRole(role)} className={`p-2.5 rounded-lg border text-left text-sm transition-all ${form.preferredRoles.includes(role) ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+              <button key={role} type="button" onClick={() => toggleRole(role)} className={`p-2.5 rounded-lg border text-left text-sm transition-all ${form.preferredRoles.includes(role) ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
                 {role}
               </button>
             ))}
@@ -159,7 +174,7 @@ export default function StudentProfile() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Experience Level</label>
-              <select value={form.experienceLevel} onChange={(e) => setForm({ ...form, experienceLevel: e.target.value })} className="input-field">
+              <select value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} className="input-field">
                 {experienceLevels.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
